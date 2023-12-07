@@ -229,8 +229,10 @@ RUN \
     libidn12 \
     libreadline8 \
     libyaml-0-2 \
-    nodejs \
   ;
+
+COPY --from=node /usr/local/bin /usr/local/bin
+COPY --from=node /usr/local/lib /usr/local/lib
 
 # Copy Mastodon sources into final layer
 COPY . /opt/mastodon/
