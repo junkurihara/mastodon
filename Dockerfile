@@ -229,6 +229,7 @@ RUN \
     libidn12 \
     libreadline8 \
     libyaml-0-2 \
+    nodejs \
   ;
 
 # Copy Mastodon sources into final layer
