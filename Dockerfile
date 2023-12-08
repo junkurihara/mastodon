@@ -231,9 +231,6 @@ RUN \
     libyaml-0-2 \
   ;
 
-COPY --from=node /usr/local/bin /usr/local/bin
-COPY --from=node /usr/local/lib /usr/local/lib
-
 # Copy Mastodon sources into final layer
 COPY . /opt/mastodon/
 
