@@ -37,6 +37,7 @@ class Quote < ApplicationRecord
   before_validation :set_accounts
   before_validation :set_activity_uri, only: :create, if: -> { account.local? && quoted_account&.remote? }
   validates :activity_uri, presence: true, if: -> { account.local? && quoted_account&.remote? }
+  validates :approval_uri, absence: true, if: -> { quoted_account&.local? }
   validate :validate_visibility
 
   def accept!
@@ -53,6 +54,12 @@ class Quote < ApplicationRecord
 
   def acceptable?
     accepted? || !legacy?
+  end
+
+  def ensure_quoted_access
+    status.mentions.create!(account: quoted_account, silent: true)
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    nil
   end
 
   def schedule_refresh_if_stale!
