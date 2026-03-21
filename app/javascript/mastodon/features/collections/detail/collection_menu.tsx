@@ -2,6 +2,8 @@ import { useCallback, useMemo } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
+import { matchPath } from 'react-router';
+
 import { useAccount } from '@/mastodon/hooks/useAccount';
 import MoreVertIcon from '@/material-icons/400-24px/more_vert.svg?react';
 import { openModal } from 'mastodon/actions/modal';
@@ -9,6 +11,7 @@ import type { ApiCollectionJSON } from 'mastodon/api_types/collections';
 import { Dropdown } from 'mastodon/components/dropdown_menu';
 import { IconButton } from 'mastodon/components/icon_button';
 import { me } from 'mastodon/initial_state';
+import type { MenuItem } from 'mastodon/models/dropdown_menu';
 import { useAppDispatch } from 'mastodon/store';
 
 import { messages as editorMessages } from '../editor';
@@ -29,6 +32,10 @@ const messages = defineMessages({
   report: {
     id: 'collections.report_collection',
     defaultMessage: 'Report this collection',
+  },
+  revoke: {
+    id: 'collections.revoke_collection_inclusion',
+    defaultMessage: 'Remove myself from this collection',
   },
   more: { id: 'status.more', defaultMessage: 'More' },
 });
@@ -68,9 +75,25 @@ export const CollectionMenu: React.FC<{
     );
   }, [collection, dispatch]);
 
+  const currentAccountInCollection = collection.items.find(
+    (item) => item.account_id === me,
+  );
+
+  const openRevokeConfirmation = useCallback(() => {
+    void dispatch(
+      openModal({
+        modalType: 'REVOKE_COLLECTION_INCLUSION',
+        modalProps: {
+          collectionId: collection.id,
+          collectionItemId: currentAccountInCollection?.id,
+        },
+      }),
+    );
+  }, [collection.id, currentAccountInCollection?.id, dispatch]);
+
   const menu = useMemo(() => {
     if (isOwnCollection) {
-      const commonItems = [
+      const commonItems: MenuItem[] = [
         {
           text: intl.formatMessage(editorMessages.manageAccounts),
           to: `/collections/${id}/edit`,
@@ -96,20 +119,43 @@ export const CollectionMenu: React.FC<{
       } else {
         return commonItems;
       }
-    } else if (ownerAccount) {
-      return [
-        {
-          text: intl.formatMessage(messages.viewOtherCollections),
-          to: `/@${ownerAccount.acct}/featured`,
-        },
-        null,
-        {
-          text: intl.formatMessage(messages.report),
-          action: openReportModal,
-        },
-      ];
     } else {
-      return [];
+      const items: MenuItem[] = [];
+
+      if (ownerAccount) {
+        const featuredCollectionsPath = `/@${ownerAccount.acct}/featured`;
+        // Don't show menu link to featured collections while on that very page
+        if (
+          !matchPath(location.pathname, {
+            path: featuredCollectionsPath,
+            exact: true,
+          })
+        ) {
+          items.push(
+            ...[
+              {
+                text: intl.formatMessage(messages.viewOtherCollections),
+                to: featuredCollectionsPath,
+              },
+              null,
+            ],
+          );
+        }
+      }
+
+      if (currentAccountInCollection) {
+        items.push({
+          text: intl.formatMessage(messages.revoke),
+          action: openRevokeConfirmation,
+        });
+      }
+
+      items.push({
+        text: intl.formatMessage(messages.report),
+        action: openReportModal,
+      });
+
+      return items;
     }
   }, [
     isOwnCollection,
@@ -117,6 +163,8 @@ export const CollectionMenu: React.FC<{
     id,
     openDeleteConfirmation,
     context,
+    currentAccountInCollection,
+    openRevokeConfirmation,
     ownerAccount,
     openReportModal,
   ]);

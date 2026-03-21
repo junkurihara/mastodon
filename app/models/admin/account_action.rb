@@ -46,6 +46,7 @@ class Admin::AccountAction < Admin::BaseAction
     ApplicationRecord.transaction do
       handle_type!
       process_strike!
+      create_log!
       process_reports!
     end
 
@@ -64,20 +65,6 @@ class Admin::AccountAction < Admin::BaseAction
     when 'suspend'
       handle_suspend!
     end
-  end
-
-  def process_strike!
-    @warning = target_account.strikes.create!(
-      account: current_account,
-      report: report,
-      action: type,
-      text: text_for_warning,
-      status_ids: status_ids
-    )
-
-    # A log entry is only interesting if the warning contains
-    # custom text from someone. Otherwise it's just noise.
-    log_action(:create, @warning) if @warning.text.present? && type == 'none'
   end
 
   def process_reports!
@@ -119,6 +106,12 @@ class Admin::AccountAction < Admin::BaseAction
     target_account.suspend!(origin: :local)
   end
 
+  def create_log!
+    # A log entry is only interesting if the warning contains
+    # custom text from someone. Otherwise it's just noise.
+    log_action(:create, @warning) if @warning&.text.present? && type == 'none'
+  end
+
   def text_for_warning
     [warning_preset&.text, text].compact.join("\n\n")
   end
@@ -129,17 +122,6 @@ class Admin::AccountAction < Admin::BaseAction
 
   def process_queue!
     queue_suspension_worker! if type == 'suspend'
-  end
-
-  def process_notification!
-    return unless warnable?
-
-    UserMailer.warning(target_account.user, warning).deliver_later!
-    LocalNotificationWorker.perform_async(target_account.id, warning.id, 'AccountWarning', 'moderation_warning')
-  end
-
-  def warnable?
-    send_email_notification? && target_account.local?
   end
 
   def status_ids
