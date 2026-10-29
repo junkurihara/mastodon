@@ -5,32 +5,35 @@ import { FormattedMessage } from 'react-intl';
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 
+import IconPinned from '@/images/icons/icon_pinned.svg?react';
 import { useAccount } from '@/mastodon/hooks/useAccount';
 import { useCurrentAccountId } from '@/mastodon/hooks/useAccountId';
 import type { AccountStatusShape } from '@/mastodon/models/status';
 
 import { Avatar } from '../avatar';
+import { Badge } from '../badge';
 import { DisplayName } from '../display_name';
 import { useAccountHandle } from '../display_name/default';
+import { Icon } from '../icon';
 import { RelativeTimestamp } from '../relative_timestamp';
 import { Skeleton } from '../skeleton';
 
 import classes from './header.module.scss';
-import { statusLink } from './utils';
+import { accountStatusLinkProps, statusLink } from './utils';
 
 interface StatusRedesignHeaderProps {
   status: Pick<
     AccountStatusShape,
     'id' | 'account' | 'created_at' | 'visibility' | 'mentions'
   >;
-  children?: React.ReactNode;
   className?: string;
+  featured?: boolean;
 }
 
 export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
   status,
-  children,
   className,
+  featured,
 }) => {
   const account = status.account;
   const handle = useAccountHandle(account);
@@ -40,21 +43,12 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
   );
 
   const handleId = useId();
-  const accountLinkProps = {
-    to: {
-      pathname: `/@${account.acct}`,
-      state: { reference: 'status' },
-    },
-    title: `@${account.acct}`,
-    'data-id': account.id,
-    'data-hover-card-account': account.id,
-    'data-hover-card-reference': 'status',
-  };
+  const accountLinkProps = accountStatusLinkProps(account);
 
   let displayName = (
     <Link
       {...accountLinkProps}
-      className={classes.headerNameLink}
+      className={classes.nameLink}
       aria-describedby={handleId}
     >
       <DisplayName account={account} variant='noDomain' />
@@ -102,18 +96,18 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
   }
 
   return (
-    <header className={classNames(className, classes.header)}>
+    <header className={classNames(className, classes.root)}>
       <Link
         {...accountLinkProps}
         role='presentation'
         tabIndex={-1}
-        className={classes.headerAvatar}
+        className={classes.avatar}
       >
         <Avatar account={account} size={null} />
       </Link>
 
-      <div>
-        <p className={classes.headerName}>
+      <div className={classes.contents}>
+        <p className={classes.name}>
           {displayName}
           &bull;
           <Link
@@ -121,12 +115,13 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
               pathname: statusLink(status),
               state: { reference: 'status' },
             }}
+            className={classes.date}
           >
             <RelativeTimestamp timestamp={status.created_at} />
           </Link>
         </p>
 
-        <p className={classes.headerHandle}>
+        <p className={classes.handle}>
           <Link
             {...accountLinkProps}
             role='presentation'
@@ -138,7 +133,18 @@ export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
         </p>
       </div>
 
-      {children}
+      {featured && (
+        <Badge
+          className={classes.pinnedBadge}
+          icon={<Icon id='pinned' icon={IconPinned} />}
+          label={
+            <FormattedMessage
+              id='account.timeline.pinned'
+              defaultMessage='Pinned'
+            />
+          }
+        />
+      )}
     </header>
   );
 };
